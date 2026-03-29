@@ -1,5 +1,7 @@
 # Semiconductor job bot
 
+**Repository:** [github.com/Shivanesh13/Semiconductor_Jobs_Bot](https://github.com/Shivanesh13/Semiconductor_Jobs_Bot)
+
 Python CLI that aggregates **hardware / silicon design, verification, and performance-modeling** style roles from public career sources (Workday, Greenhouse, Lever, JobSpy/Indeed mirrors, Ashby, etc.), scores them against configurable keywords, stores state in **SQLite**, and writes **Markdown** + **Excel** outputs.
 
 ## Features
@@ -42,3 +44,4 @@ This tool is intended for **personal job search** and learning. Career sites and
 ## License
 
 [MIT](LICENSE)
+# Semiconductor_Jobs_Bot
