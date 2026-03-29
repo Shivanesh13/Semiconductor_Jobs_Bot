@@ -45,3 +45,4 @@ This tool is intended for **personal job search** and learning. Career sites and
 
 [MIT](LICENSE)
 # Semiconductor_Jobs_Bot
+# Semiconductor_Jobs_Bot
