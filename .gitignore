@@ -1,0 +1,12 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+jobs.db
+jobs_tracker.xlsx
+.env
+.DS_Store
+
+# Personal run output (keep folder via .gitkeep)
+daily_logs/*.md
+!daily_logs/.gitkeep
