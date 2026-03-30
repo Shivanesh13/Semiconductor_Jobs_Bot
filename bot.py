@@ -2192,6 +2192,7 @@ def export_jobs_excel(
     out = Path(out_path or EXCEL_TRACKER_PATH)
     headers = [
         "Job ID",
+        "Company name",
         "Job name",
         "Locations",
         "Posted (job board)",
@@ -2204,17 +2205,18 @@ def export_jobs_excel(
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT external_id, title, location, posted_at, first_seen_at, applied, url
+        SELECT external_id, company_name, title, location, posted_at, first_seen_at, applied, url
         FROM jobs
         """
     )
     raw = cur.fetchall()
 
-    rows: list[tuple[str, str, str | None, str, str, int, str]] = []
-    for external_id, title, location, posted_at, first_seen_at, applied, url in raw:
+    rows: list[tuple[str, str, str, str | None, str, str, int, str]] = []
+    for external_id, company_name, title, location, posted_at, first_seen_at, applied, url in raw:
         rows.append(
             (
                 str(external_id),
+                str(company_name),
                 str(title),
                 location,
                 str(posted_at).strip() if posted_at else "",
@@ -2224,14 +2226,14 @@ def export_jobs_excel(
             )
         )
 
-    def is_intern_coop(r: tuple[str, str, str | None, str, str, int, str]) -> bool:
-        return bool(intern_re.search(r[1] or ""))
+    def is_intern_coop(r: tuple[str, str, str, str | None, str, str, int, str]) -> bool:
+        return bool(intern_re.search(r[2] or ""))
 
     intern_rows = [r for r in rows if is_intern_coop(r)]
     full_rows = [r for r in rows if not is_intern_coop(r)]
 
-    def excel_sort_key(r: tuple[str, str, str | None, str, str, int, str]) -> tuple[int, float, float]:
-        _eid, _title, _loc, po, fs, ap, _url = r
+    def excel_sort_key(r: tuple[str, str, str, str | None, str, str, int, str]) -> tuple[int, float, float]:
+        _eid, _company, _title, _loc, po, fs, ap, _url = r
         fs_ts = _posted_ts_for_sort(fs)
         fs_key = -fs_ts if fs_ts > 0 else 0.0
         return (ap, _posted_recency_sort_key(po if po else None), fs_key)
@@ -2246,9 +2248,9 @@ def export_jobs_excel(
     ws_intern.title = "Co-op & Intern"
     ws_full = wb.create_sheet("Full time")
 
-    def write_sheet(ws: Worksheet, data: list[tuple[str, str, str | None, str, str, int, str]]) -> None:
+    def write_sheet(ws: Worksheet, data: list[tuple[str, str, str, str | None, str, str, int, str]]) -> None:
         ws.append(list(headers))
-        for external_id, title, location, posted_board, first_seen_at, applied, url in data:
+        for external_id, company_nm, title, location, posted_board, first_seen_at, applied, url in data:
             jid = _excel_job_id_display(external_id, url)
             dt = _excel_parse_first_seen(first_seen_at)
             loc_s = str(location or "").strip()
@@ -2257,6 +2259,7 @@ def export_jobs_excel(
             ws.append(
                 [
                     jid,
+                    company_nm,
                     title,
                     loc_s,
                     posted_s,
@@ -2270,23 +2273,24 @@ def export_jobs_excel(
             ws.auto_filter.ref = ws.dimensions
         for col_letter, width in (
             ("A", 16),
-            ("B", 48),
-            ("C", 28),
-            ("D", 24),
-            ("E", 20),
-            ("F", 10),
-            ("G", 54),
+            ("B", 26),
+            ("C", 48),
+            ("D", 28),
+            ("E", 24),
+            ("F", 20),
+            ("G", 10),
+            ("H", 54),
         ):
             ws.column_dimensions[col_letter].width = width
-        for row in ws.iter_rows(min_row=2, min_col=5, max_col=5):
+        for row in ws.iter_rows(min_row=2, min_col=6, max_col=6):
             for cell in row:
                 if isinstance(cell.value, datetime):
                     cell.number_format = "yyyy-mm-dd hh:mm"
         top_align = Alignment(wrap_text=True, vertical="top")
-        for row in ws.iter_rows(min_row=2, min_col=2, max_col=4):
+        for row in ws.iter_rows(min_row=2, min_col=2, max_col=5):
             for cell in row:
                 cell.alignment = top_align
-        for row in ws.iter_rows(min_row=2, min_col=7, max_col=7):
+        for row in ws.iter_rows(min_row=2, min_col=8, max_col=8):
             for cell in row:
                 if not isinstance(cell, Cell):
                     continue
