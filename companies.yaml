@@ -5,9 +5,19 @@ companies:
     ats: workday
     tenant_url: "https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs"
     portal_base: "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"
-    # List API has no job description — scoring used title-only and missed most HW roles. Fetch JD JSON for up to N reqs (intern/grad/HW titles first).
     workday_enrich_job_details: true
     workday_enrich_max: 650
+  # Supplementary Indeed search — catches NVIDIA intern/new-grad reqs that may appear on Indeed with different phrasing.
+  - name: NVIDIA
+    ats: jobspy
+    jobspy_queries:
+      - "NVIDIA hardware intern"
+      - "NVIDIA ASIC design intern"
+      - "NVIDIA verification intern"
+      - "NVIDIA GPU hardware intern"
+      - "NVIDIA RTL design new grad"
+      - "NVIDIA hardware engineer new grad"
+      - "NVIDIA ASIC verification engineer"
   - name: Cisco
     ats: workday
     tenant_url: "https://cisco.wd5.myworkdayjobs.com/wday/cxs/cisco/Cisco_Careers/jobs"
@@ -70,21 +80,47 @@ companies:
       - "AMD hardware engineering co-op"
       - "AMD logic design engineer"
       - "AMD microarchitecture RTL engineer"
+      - "AMD FPGA engineer"
+      - "AMD design verification engineer"
+      - "AMD UVM verification"
+      - "AMD SoC design engineer"
+      - "AMD silicon validation engineer"
   - name: Intel
     ats: workday
     tenant_url: "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs"
     portal_base: "https://intel.wd1.myworkdayjobs.com/External"
+    workday_enrich_job_details: true
+    workday_enrich_max: 400
+  # Supplementary Indeed search for Intel intern/grad roles.
+  - name: Intel
+    ats: jobspy
+    jobspy_queries:
+      - "Intel hardware intern"
+      - "Intel RTL design intern"
+      - "Intel verification intern"
+      - "Intel FPGA intern"
+      - "Intel hardware engineer new grad"
+      - "Intel ASIC design engineer"
+      - "Intel design verification engineer"
   # WordPress career page (India-heavy). With united_states_only: true, most rows drop unless the title/loc signals US.
   - name: Mirafra
     ats: mirafra
     mirafra_careers_url: "https://mirafra.com/career/"
   - name: Arm
     ats: phenom
-    # Phenom-hosted listing (not Workday). Default: all jobs. For intern-only, set listing_url to e.g.:
-    # https://careers.arm.com/search-jobs?acm=ALL&alrpm=ALL&ascf=[{"key":"custom_fields.ExperienceLevel","value":"Intern"}]
-    # (URL-encode the ascf JSON when editing YAML if needed)
     listing_url: "https://careers.arm.com/search-jobs?acm=ALL&alrpm=ALL"
-    phenom_max_pages: 20
+    phenom_max_pages: 40
+  # Supplementary Indeed search for Arm intern/grad roles.
+  - name: Arm
+    ats: jobspy
+    jobspy_queries:
+      - "Arm hardware intern"
+      - "Arm RTL design intern"
+      - "Arm verification intern"
+      - "Arm CPU design engineer"
+      - "Arm hardware engineer new grad"
+      - "Arm design verification engineer"
+      - "Arm SoC design engineer"
   # Qualcomm careers (careers.qualcomm.com) are Eightfold PCS; the public search API often 404s/empties for bots.
   # JobSpy pulls a subset of the same reqs reposted on Indeed — not 1:1 with the official site.
   - name: Qualcomm
@@ -114,15 +150,33 @@ companies:
       - "Qualcomm NoC engineer"
       - "Qualcomm memory subsystem engineer"
       - "Qualcomm RISC-V engineer"
+      - "Qualcomm design verification engineer"
+      - "Qualcomm UVM engineer"
+      - "Qualcomm FPGA engineer"
+      - "Qualcomm hardware engineer entry level"
+      - "Qualcomm silicon validation"
   - name: Broadcom
     ats: workday
     # Broadcom uses wd1 + External_Career (wd5/External returns HTTP 422).
     tenant_url: "https://broadcom.wd1.myworkdayjobs.com/wday/cxs/broadcom/External_Career/jobs"
     portal_base: "https://broadcom.wd1.myworkdayjobs.com/External_Career"
+    workday_enrich_job_details: true
+    workday_enrich_max: 300
   - name: Marvell
     ats: workday
     tenant_url: "https://marvell.wd1.myworkdayjobs.com/wday/cxs/marvell/MarvellCareers/jobs"
     portal_base: "https://marvell.wd1.myworkdayjobs.com/MarvellCareers"
+    workday_enrich_job_details: true
+    workday_enrich_max: 200
+  # Supplementary Indeed search for Marvell intern/grad roles.
+  - name: Marvell
+    ats: jobspy
+    jobspy_queries:
+      - "Marvell hardware intern"
+      - "Marvell RTL design intern"
+      - "Marvell verification intern"
+      - "Marvell ASIC design engineer"
+      - "Marvell hardware engineer new grad"
   - name: Texas Instruments
     ats: jobspy
     jobspy_queries:
@@ -145,6 +199,8 @@ companies:
     ats: workday
     tenant_url: "https://cadence.wd1.myworkdayjobs.com/wday/cxs/cadence/External_Careers/jobs"
     portal_base: "https://cadence.wd1.myworkdayjobs.com/External_Careers"
+    workday_enrich_job_details: true
+    workday_enrich_max: 200
   - name: Micron
     ats: workday
     tenant_url: "https://micron.wd1.myworkdayjobs.com/wday/cxs/micron/External/jobs"
@@ -195,14 +251,60 @@ companies:
     phenom_page_query: page
     phenom_max_pages: 30
 
+  # Imagination Technologies (PowerVR GPU/AI IP). Custom careers portal, not Workday/Greenhouse.
+  - name: Imagination Technologies
+    ats: jobspy
+    jobspy_queries:
+      - "Imagination Technologies hardware engineer"
+      - "Imagination Technologies RTL design"
+      - "Imagination Technologies GPU design"
+      - "Imagination Technologies verification engineer"
+      - "Imagination Technologies FPGA"
+      - "Imagination Technologies hardware intern"
+      - "Imagination Technologies design engineer"
+      - "Imagination Technologies silicon"
+  # SpaceX — custom careers portal (spacex.com/careers). Workday CXS returns 401.
+  - name: SpaceX
+    ats: jobspy
+    jobspy_queries:
+      - "SpaceX hardware engineer"
+      - "SpaceX ASIC design"
+      - "SpaceX FPGA engineer"
+      - "SpaceX RTL design"
+      - "SpaceX verification engineer"
+      - "SpaceX silicon engineer"
+      - "SpaceX hardware intern"
+      - "SpaceX avionics hardware"
+      - "SpaceX digital design engineer"
+      - "SpaceX Starlink hardware"
+
   # --- Phenom listings (HTML search pages with /job/ links) ---
   - name: Ampere Computing
     ats: jobvite
     jobvite_slug: "amperecomputing"
-  - name: Apple Silicon
-    ats: phenom
-    listing_url: "https://jobs.apple.com/en-us/search?team=silicon-design-SFTWR-SD"
-    phenom_max_pages: 10
+  # Apple jobs.apple.com uses custom HTML (/details/ URLs, not /job/), so Phenom scraper won't work.
+  # JobSpy/Indeed as a reliable mirror for silicon/HW roles.
+  - name: Apple
+    ats: jobspy
+    jobspy_queries:
+      - "Apple RTL design engineer"
+      - "Apple RTL design intern"
+      - "Apple ASIC design engineer"
+      - "Apple digital design engineer"
+      - "Apple hardware engineer silicon"
+      - "Apple hardware intern"
+      - "Apple hardware engineering intern"
+      - "Apple design verification engineer"
+      - "Apple verification intern"
+      - "Apple SoC design engineer"
+      - "Apple GPU hardware engineer"
+      - "Apple CPU design engineer"
+      - "Apple FPGA engineer"
+      - "Apple silicon validation engineer"
+      - "Apple hardware new grad"
+      - "Apple microarchitecture engineer"
+      - "Apple performance modeling"
+      - "Apple silicon design intern"
 
   # --- Greenhouse & Lever (Established Startups) ---
   - name: Tenstorrent
@@ -376,6 +478,8 @@ companies:
   - name: Condor Computing
     ats: greenhouse
     board: "condorcomputing"
+    enabled: false
+    # Greenhouse board returning 404 as of 2026-04
   - name: InCore Semi
     ats: unknown
     enabled: false

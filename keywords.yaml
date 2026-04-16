@@ -17,14 +17,14 @@ us_location_indicators:
 
 role_sort:
   intern_regex: "\\b(internship|intern|co[-\\s]?op)\\b"
-  grad_regex: "\\b(ncg|new\\s+college\\s+grad|new\\s+grad|university\\s+graduate|gred|early\\s+career|rotational\\s+graduate)\\b"
+  grad_regex: "\\b(ncg|new\\s+college\\s+grad|new\\s+grad|university\\s+graduate|gred|early\\s+career|rotational\\s+graduate|entry\\s+level|junior|associate\\s+(hardware|design|verification)|engineer\\s+[iI]\\b)\\b"
 
 exclude_title_regex:
-  # Director / VP / president / principal (IC) titles are not filtered here. Firmware engineer roles are.
-  - "\\bsoftware\\b"
+  # Software: exclude pure software roles but keep "hardware/software" or "HW/SW" co-design.
+  - "(?<!hardware[/\\s])(?<!hw[/\\s])\\bsoftware\\s+(engineer|developer|intern)\\b"
   - "\\bfirmware\\b"
   - "\\bdft\\b"
-  - "\\bphysical\\b"
+  - "\\bphysical\\s+design\\b"
   - "\\b(finance|financial\\s+analyst|corporate\\s+finance|treasury|payroll|fp&a|fp\\s*&\\s*a|investor\\s+relations)\\b"
   - "\\b(accountant|accounting|bookkeeper|internal\\s+auditor)\\b"
   - "\\b(tax\\s+manager|tax\\s+specialist)\\b"
@@ -37,11 +37,18 @@ exclude_title_regex:
   - "\\b(analog|mixed.signal|rf\\s+design|power\\s+electronics)\\b"
   - "\\b(mechanical|thermal|systems\\s+engineer|program\\s+manager|product\\s+manager)\\b"
   - "\\b(sales|marketing|recruiter|hr\\s+|human\\s+resources|legal\\s+counsel)\\b"
+  # Non-hardware engineering noise
+  - "\\b(technician|field\\s+service|test\\s+technician|lab\\s+technician)\\b"
+  - "\\b(customer\\s+support|technical\\s+support)\\b"
+  - "\\b(data\\s+scientist|data\\s+analyst|machine\\s+learning\\s+engineer)\\b"
+  - "\\b(devops|site\\s+reliability|\\bsre\\b)\\b"
+  - "\\b(network\\s+administrator|network\\s+operations)\\b"
 
 # Do not count performance_modeling toward score for these employers (avoids “performance” noise from launch/ops, etc.).
 skip_performance_track_for_companies:
   - "xAI"
   - "Tesla"
+  - "SpaceX"
 
 # ─────────────────────────────────────────────────────────────────
 # DESIGN — RTL, ASIC, FPGA, CPU, GPU, SoC digital design roles
@@ -67,7 +74,6 @@ design:
   - "hardware engineering"
   - "hw design"
   - "digital engineer"
-  - "soc"
   # CPU specific
   - "cpu design"
   - "cpu rtl"
@@ -108,27 +114,57 @@ design:
   - "noc"
   - "axi"
   - "amba"
+  # Protocol / interface design
+  - "pcie design"
+  - "pcie engineer"
+  - "pcie"
+  - "dma"
+  - "dma design"
+  - "dma controller"
+  - "ahb"
+  - "apb"
+  - "i2c"
+  - "spi"
+  - "uart"
+  - "wishbone"
   # FPGA
   - "fpga"
   - "fpga design"
   - "fpga engineer"
   - "fpga prototyping"
+  - "fpga developer"
+  - "fpga verification"
   - "xilinx"
   - "intel fpga"
   - "vivado"
+  - "lattice fpga"
+  - "lattice semiconductor"
+  # Hardware accelerator / datapath
+  - "hardware accelerator"
+  - "cnn accelerator"
+  - "deep learning accelerator"
+  - "datapath"
+  - "data path"
+  - "mac unit"
   # Implementation / synthesis
-  - "synthesis"
+  - "logic synthesis"
+  - "rtl synthesis"
+  - "design synthesis"
   - "timing closure"
-  - "sta"
   - "static timing"
+  - "static timing analysis"
   - "clock domain crossing"
   - "cdc"
+  - "synchronizer"
   - "netlist"
   - "register transfer"
   - "floorplan"
-  - "silicon"
+  - "silicon design"
+  - "silicon engineer"
   - "new grad hardware"
   - "hardware new grad"
+  - "hardware intern"
+  - "hardware internship"
   # Intel / NVIDIA–style listing titles (LinkedIn-style phrasing)
   - "ip design"
   - "soc development"
@@ -160,30 +196,43 @@ design:
   - "signal integrity"
   - "risc-v"
   - "riscv"
+  - "verilog"
+  - "vhdl"
+  - "digital logic"
 
 # ─────────────────────────────────────────────────────────────────
 # VERIFICATION — DV, UVM, formal, silicon validation
 # ─────────────────────────────────────────────────────────────────
 verification:
   # Core DV
-  - "dv"
+  - "dv engineer"
+  - "dv design"
   - "design verification"
   - "verification engineer"
   - "dv engineer"
   - "functional verification"
   - "hardware verification"
   - "asic verification"
+  - "dv verification"
+  - "dv methodology"
+  - "verification intern"
+  - "dv intern"
   # Methodology
   - "uvm"
+  - "uvmf"
   - "systemverilog"
   - "sv assertion"
   - "testbench"
+  - "test bench"
   - "constrained random"
   - "functional coverage"
   - "code coverage"
+  - "coverage driven"
+  - "coverage closure"
   - "assertion based"
   - "sva"
   - "ovl"
+  - "scoreboard"
   # Formal
   - "formal verification"
   - "formal methods"
@@ -196,6 +245,10 @@ verification:
   - "fpga emulation"
   - "palladium"
   - "zebu"
+  # Emulation tools
+  - "questasim"
+  - "xcelium"
+  - "modelsim"
   # Silicon validation
   - "pre-silicon"
   - "post-silicon"
@@ -213,6 +266,9 @@ verification:
   - "ufs verification"
   - "usb verification"
   - "protocol verification"
+  - "i2c verification"
+  - "spi verification"
+  - "axi verification"
   # Intel / NVIDIA–style DV titles
   - "ip design verification"
   - "gpu design verification"
@@ -253,17 +309,24 @@ performance_modeling:
   - "architecture exploration"
   - "architecture modeling"
   # CPU performance specifics
-  - "ipc"
+  - "instructions per cycle"
+  - "instruction level parallelism"
   - "branch prediction"
   - "cache modeling"
+  - "cache simulator"
   - "memory hierarchy"
   - "pipeline modeling"
   - "out of order execution"
+  - "reorder buffer"
+  - "issue queue"
+  - "register renaming"
   - "prefetch"
   - "tlb modeling"
+  - "miss rate"
+  - "memory access time"
   # Power / PnP
   - "power performance"
-  - "pnp"
+  - "power and performance"
   - "power modeling"
   - "power analysis"
   - "power estimation"
@@ -285,7 +348,7 @@ performance_modeling:
   - "architectural simulation"
   - "workload analysis"
   - "workload characterization"
-  - "benchmarking"
+  - "hardware benchmarking"
   - "spec cpu"
   - "mlperf"
   # Broader architecture roles
@@ -313,3 +376,45 @@ performance_modeling:
   - "soc architect"
   - "ai accelerators"
   - "risc-v certification"
+
+# Broad US Indeed searches → written to indeed_general_roles.xlsx (not jobs_tracker.xlsx).
+# Rows whose job URL already exists in jobs.db (company board scan) are omitted.
+indeed_general_scan:
+  enabled: true
+  # Optional: stricter than global min_score for this sheet only
+  # min_score: 1.0
+  # results_wanted: 20
+  queries:
+    # Design
+    - "ASIC design engineer"
+    - "ASIC design intern"
+    - "FPGA design engineer"
+    - "FPGA design intern"
+    - "FPGA engineer"
+    - "RTL design engineer"
+    - "RTL design intern"
+    - "RTL engineer"
+    - "CPU design engineer"
+    - "GPU design engineer"
+    - "digital design engineer semiconductor"
+    - "hardware design engineer chip"
+    - "SoC design engineer"
+    - "Verilog RTL engineer"
+    - "silicon design engineer"
+    - "hardware accelerator engineer"
+    - "PCIe hardware engineer"
+    - "semiconductor hardware intern"
+    - "semiconductor hardware new grad"
+    # Verification
+    - "design verification engineer"
+    - "design verification intern"
+    - "UVM verification engineer"
+    - "ASIC verification engineer"
+    - "ASIC verification intern"
+    - "hardware verification engineer"
+    - "SystemVerilog verification"
+    - "functional verification engineer"
+    # Performance / Architecture
+    - "CPU architecture engineer"
+    - "performance modeling engineer"
+    - "microarchitecture engineer"

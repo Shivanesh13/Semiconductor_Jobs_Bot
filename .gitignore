@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 jobs.db
 jobs_tracker.xlsx
+indeed_general_roles.xlsx
 .env
 .DS_Store
 

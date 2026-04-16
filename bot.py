@@ -36,11 +36,23 @@ import yaml
 from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parent
+
+_dotenv_path = ROOT / ".env"
+if _dotenv_path.is_file():
+    with open(_dotenv_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if not _line or _line.startswith("#") or "=" not in _line:
+                continue
+            _k, _, _v = _line.partition("=")
+            os.environ.setdefault(_k.strip(), _v.strip())
 DB_PATH = ROOT / "jobs.db"
 COMPANIES_PATH = ROOT / "companies.yaml"
 KEYWORDS_PATH = ROOT / "keywords.yaml"
 LOGS_DIR = ROOT / "daily_logs"
 EXCEL_TRACKER_PATH = ROOT / "jobs_tracker.xlsx"
+EXCEL_INDEED_GENERAL_PATH = ROOT / "indeed_general_roles.xlsx"
+INDEED_GENERAL_SOURCE_KEY = "jobspy:IndeedGeneral"
 USER_AGENT = "SemiconductorJobBot/1.0 (+local; job search)"
 
 # JobSpy → Indeed GraphQL `dateOnIndeed` window (hours). Tighter than default 168h to reduce stale index rows.
@@ -1299,57 +1311,203 @@ def fetch_jobspy(search_queries: list[str], company_name: str) -> list[Normalize
         q = str(query).strip()
         if not q:
             continue
-        for job_type_filter in ["internship", "fulltime", None]:
-            try:
-                time.sleep(2.5)
-                kwargs = dict(
-                    site_name=["indeed"],
-                    search_term=q,
-                    location="United States",
-                    results_wanted=15,
-                    hours_old=JOBSPY_INDEED_DATE_ON_INDEED_HOURS,
-                    country_indeed="USA",
-                )
-                if job_type_filter is not None:
-                    kwargs["job_type"] = job_type_filter
-                jobs_df = scrape_jobs(**kwargs)
-                if jobs_df is None or jobs_df.empty:
+        try:
+            time.sleep(2.5)
+            kwargs = dict(
+                site_name=["indeed"],
+                search_term=q,
+                location="United States",
+                results_wanted=15,
+                hours_old=JOBSPY_INDEED_DATE_ON_INDEED_HOURS,
+                country_indeed="USA",
+            )
+            jobs_df = scrape_jobs(**kwargs)
+            if jobs_df is None or jobs_df.empty:
+                continue
+            for _, row in jobs_df.iterrows():
+                jid = str(row.get("id") or row.get("job_url") or "")
+                if not jid or jid in seen_ids:
                     continue
-                for _, row in jobs_df.iterrows():
-                    jid = str(row.get("id") or row.get("job_url") or "")
-                    if not jid or jid in seen_ids:
-                        continue
-                    seen_ids.add(jid)
-                    title = str(row.get("title") or "").strip()
-                    location = str(row.get("location") or "").strip()
-                    url = str(row.get("job_url") or "").strip()
-                    posted = str(row.get("date_posted") or "").strip()
-                    if not title or not url:
-                        continue
-                    out.append(
-                        NormalizedJob(
-                            source_key=source_key,
-                            external_id=jid,
-                            title=title,
-                            company_name=company_name,
-                            url=url,
-                            location=location if location else None,
-                            posted_at=posted if posted else None,
-                            body="",
-                        )
+                seen_ids.add(jid)
+                title = str(row.get("title") or "").strip()
+                location = str(row.get("location") or "").strip()
+                url = str(row.get("job_url") or "").strip()
+                posted = str(row.get("date_posted") or "").strip()
+                if not title or not url:
+                    continue
+                out.append(
+                    NormalizedJob(
+                        source_key=source_key,
+                        external_id=jid,
+                        title=title,
+                        company_name=company_name,
+                        url=url,
+                        location=location if location else None,
+                        posted_at=posted if posted else None,
+                        body="",
                     )
-            except Exception as e:
-                print(
-                    f"[warn] JobSpy {company_name} query='{q}' "
-                    f"job_type={job_type_filter!r}: {e}",
-                    file=sys.stderr,
                 )
+        except Exception as e:
+            print(
+                f"[warn] JobSpy {company_name} query='{q}': {e}",
+                file=sys.stderr,
+            )
 
     if not out:
         print(f"[warn] JobSpy {company_name}: no jobs matched queries", file=sys.stderr)
         return []
     out = _drop_expired_indeed_jobspy_rows(out)
     return _merge_jobspy_indeed_by_title(out)
+
+
+def _canonical_job_url(url: str) -> str:
+    """Stable URL key for dedupe (scheme/host/path, no query or fragment)."""
+    u = (url or "").strip()
+    if not u:
+        return ""
+    try:
+        p = urlparse(u)
+        path = p.path or ""
+        if len(path) > 1 and path.endswith("/"):
+            path = path.rstrip("/")
+        netloc = (p.netloc or "").lower()
+        scheme = (p.scheme or "https").lower()
+        return urlunparse((scheme, netloc, path, "", "", ""))
+    except Exception:
+        base = u.split("#", 1)[0].split("?", 1)[0]
+        return base.strip().lower()
+
+
+def _db_canonical_url_set(conn: sqlite3.Connection) -> set[str]:
+    cur = conn.cursor()
+    cur.execute("SELECT url FROM jobs WHERE url IS NOT NULL AND TRIM(url) != ''")
+    return {_canonical_job_url(str(r[0])) for r in cur.fetchall() if r[0]}
+
+
+def fetch_indeed_general_roles(
+    search_queries: list[str],
+    *,
+    results_wanted: int = 20,
+) -> list[tuple[NormalizedJob, str]]:
+    """
+    Broad US Indeed searches (JobSpy). Employer name comes from the listing (not a fixed company).
+    Dedupes by canonical job URL only (no title-merge across employers).
+    Returns (job, search_query) for each row.
+    """
+    try:
+        from jobspy import scrape_jobs
+    except ImportError:
+        print(
+            "[warn] JobSpy not installed (Python 3.10+). Skipping Indeed general scan.",
+            file=sys.stderr,
+        )
+        return []
+
+    pairs: list[tuple[NormalizedJob, str]] = []
+    seen_url: set[str] = set()
+    rw = max(5, min(int(results_wanted), 50))
+
+    for query in search_queries:
+        q = str(query).strip()
+        if not q:
+            continue
+        try:
+            time.sleep(2.5)
+            kwargs = dict(
+                site_name=["indeed"],
+                search_term=q,
+                location="United States",
+                results_wanted=rw,
+                hours_old=JOBSPY_INDEED_DATE_ON_INDEED_HOURS,
+                country_indeed="USA",
+            )
+            jobs_df = scrape_jobs(**kwargs)
+            if jobs_df is None or jobs_df.empty:
+                continue
+            for _, row in jobs_df.iterrows():
+                url = str(row.get("job_url") or "").strip()
+                if not url:
+                    continue
+                ckey = _canonical_job_url(url)
+                if not ckey or ckey in seen_url:
+                    continue
+                seen_url.add(ckey)
+                jid = str(row.get("id") or url)
+                title = str(row.get("title") or "").strip()
+                if not title:
+                    continue
+                company_cell = (
+                    row.get("company")
+                    or row.get("company_name")
+                    or row.get("company_name_extracted")
+                )
+                employer = str(company_cell).strip() if company_cell is not None else ""
+                if not employer:
+                    employer = "Unknown"
+                location = str(row.get("location") or "").strip()
+                posted = str(row.get("date_posted") or "").strip()
+                pairs.append(
+                    (
+                        NormalizedJob(
+                            source_key=INDEED_GENERAL_SOURCE_KEY,
+                            external_id=jid,
+                            title=title,
+                            company_name=employer,
+                            url=url,
+                            location=location if location else None,
+                            posted_at=posted if posted else None,
+                            body="",
+                        ),
+                        q,
+                    )
+                )
+        except Exception as e:
+            print(
+                f"[warn] JobSpy Indeed general query={q!r}: {e}",
+                file=sys.stderr,
+            )
+
+    if not pairs:
+        print("[warn] Indeed general: no jobs returned for configured queries", file=sys.stderr)
+        return []
+
+    jobs_only = [j for j, _ in pairs]
+    kept_jobs = _drop_expired_indeed_jobspy_rows(jobs_only)
+    kept_keys = {_canonical_job_url(j.url) for j in kept_jobs}
+    return [(j, q) for j, q in pairs if _canonical_job_url(j.url) in kept_keys]
+
+
+def _parse_indeed_general_block(
+    raw: dict[str, Any],
+) -> tuple[bool, float | None, int, list[str]]:
+    """
+    keywords.yaml → indeed_general_scan: { enabled, min_score?, results_wanted?, queries: [...] }
+    """
+    block = raw.get("indeed_general_scan")
+    if not isinstance(block, dict):
+        return False, None, 20, []
+    if block.get("enabled") is False:
+        return False, None, 20, []
+    qs = block.get("queries")
+    if not isinstance(qs, list):
+        return False, None, 20, []
+    qlist = [str(x).strip() for x in qs if isinstance(x, str) and str(x).strip()]
+    if not qlist:
+        return False, None, 20, []
+    min_ovr = block.get("min_score")
+    mo: float | None = None
+    if min_ovr is not None and str(min_ovr).strip() != "":
+        try:
+            mo = float(min_ovr)
+        except (TypeError, ValueError):
+            mo = None
+    rw = block.get("results_wanted")
+    try:
+        results_wanted = int(rw) if rw is not None and str(rw).strip() != "" else 20
+    except (TypeError, ValueError):
+        results_wanted = 20
+    results_wanted = max(5, min(results_wanted, 50))
+    return True, mo, results_wanted, qlist
 
 
 def fetch_greenhouse(board: str, company_name: str) -> list[NormalizedJob]:
@@ -1724,6 +1882,111 @@ _WORKDAY_POSTED_ON_MDY_RE = re.compile(
 )
 
 
+def _board_posted_to_iso_date(posted_at: str | None, as_of: datetime) -> str | None:
+    """
+    Turn board-relative strings (e.g. Workday \"Posted Today\", \"Posted 2 Days Ago\") into
+    YYYY-MM-DD using the local collection time `as_of`. Absolute / ISO values collapse to a date.
+    Unrecognized text is returned unchanged (stripped).
+    """
+    if posted_at is None:
+        return None
+    raw = str(posted_at).strip()
+    if not raw:
+        return None
+    s = " ".join(raw.split())
+
+    if len(s) == 10 and s[4] == "-" and s[7] == "-":
+        try:
+            datetime.strptime(s[:10], "%Y-%m-%d")
+            return s[:10]
+        except ValueError:
+            pass
+
+    try:
+        iso_s = s
+        if iso_s.endswith("Z"):
+            iso_s = iso_s[:-1] + "+00:00"
+        dt = datetime.fromisoformat(iso_s.replace("Z", "+00:00"))
+        if dt.tzinfo is not None:
+            dt = dt.astimezone()
+        return dt.date().isoformat()
+    except ValueError:
+        pass
+
+    sl = s.lower()
+    d0 = as_of.date()
+
+    if re.search(r"\bposted\s+today\b", sl):
+        return d0.isoformat()
+    if re.search(r"\bposted\s+just\s+now\b", sl) or ("just now" in sl and "posted" in sl):
+        return d0.isoformat()
+    if "yesterday" in sl and "posted" in sl:
+        return (d0 - timedelta(days=1)).isoformat()
+
+    mh = re.search(r"posted\s+(\d+)\s+hours?\s+ago", s, re.IGNORECASE)
+    if mh:
+        return (as_of - timedelta(hours=int(mh.group(1)))).date().isoformat()
+
+    m = _WORKDAY_POSTED_DAYS_AGO_RE.search(s)
+    if m:
+        return (d0 - timedelta(days=int(m.group(1)))).isoformat()
+
+    mw = re.search(r"posted\s+(\d+)\s+weeks?\s+ago", s, re.IGNORECASE)
+    if mw:
+        return (d0 - timedelta(days=7 * int(mw.group(1)))).isoformat()
+
+    mm = re.search(r"posted\s+(\d+)\s+months?\s+ago", s, re.IGNORECASE)
+    if mm:
+        return (d0 - timedelta(days=30 * int(mm.group(1)))).isoformat()
+
+    mon = re.search(
+        r"posted\s+on\s+([a-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})",
+        sl,
+        re.IGNORECASE,
+    )
+    if mon:
+        mword = mon.group(1).title()
+        dnum, ynum = int(mon.group(2)), mon.group(3)
+        for fmt in ("%B %d %Y", "%b %d %Y"):
+            try:
+                parsed = datetime.strptime(f"{mword} {dnum} {ynum}", fmt)
+                return parsed.date().isoformat()
+            except ValueError:
+                continue
+
+    mdy = _WORKDAY_POSTED_ON_MDY_RE.search(s)
+    if mdy:
+        mo, da, yr = int(mdy.group(1)), int(mdy.group(2)), int(mdy.group(3))
+        if yr < 100:
+            yr += 2000
+        try:
+            return datetime(yr, mo, da).date().isoformat()
+        except ValueError:
+            pass
+
+    return raw
+
+
+def _local_datetime_from_first_seen_iso(first_seen_at: str | None) -> datetime:
+    """Interpret DB first_seen_at (UTC ISO) as local time for relative posted-date math."""
+    if not first_seen_at or not str(first_seen_at).strip():
+        return datetime.now()
+    t = " ".join(str(first_seen_at).split())
+    try:
+        if t.endswith("Z"):
+            t = t[:-1] + "+00:00"
+        dt = datetime.fromisoformat(t.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone()
+    except ValueError:
+        pass
+    dt_naive = _excel_parse_first_seen(t)
+    if dt_naive is None:
+        return datetime.now()
+    return dt_naive.replace(tzinfo=timezone.utc).astimezone()
+
+
 def _posted_ts_for_sort(posted_at: str | None) -> float:
     """
     Monotonic "freshness" timestamp for sorting: larger = more recently posted.
@@ -1912,6 +2175,7 @@ def upsert_and_classify(
     Returns (is_new_row, needs_your_attention).
     needs_your_attention = new this run OR (exists and not applied).
     """
+    job.posted_at = _board_posted_to_iso_date(job.posted_at, datetime.now())
     text_blob = f"{job.title}\n{job.body}"
     cur = conn.cursor()
     cur.execute(
@@ -1962,26 +2226,51 @@ def upsert_and_classify(
             return False, applied_dup == 0
         return True, True
     applied = int(row[0])
-    conn.execute(
-        """
-        UPDATE jobs SET
-            title = ?, company_name = ?, url = ?, location = ?, posted_at = ?,
-            last_seen_at = ?, relevance_score = ?, tracks = ?
-        WHERE source_key = ? AND external_id = ?
-        """,
-        (
-            job.title,
-            job.company_name,
-            job.url,
-            job.location,
-            job.posted_at,
-            now_iso,
-            score,
-            json.dumps(tracks),
-            job.source_key,
-            job.external_id,
-        ),
-    )
+    existing_first_seen = row[1]
+    try:
+        conn.execute(
+            """
+            UPDATE jobs SET
+                title = ?, company_name = ?, url = ?, location = ?, posted_at = ?,
+                last_seen_at = ?, relevance_score = ?, tracks = ?
+            WHERE source_key = ? AND external_id = ?
+            """,
+            (
+                job.title,
+                job.company_name,
+                job.url,
+                job.location,
+                job.posted_at,
+                now_iso,
+                score,
+                json.dumps(tracks),
+                job.source_key,
+                job.external_id,
+            ),
+        )
+    except sqlite3.IntegrityError as e:
+        if "jobs.url" not in str(e):
+            raise
+        # Another row already owns this URL — keep existing URL, just refresh metadata.
+        conn.execute(
+            """
+            UPDATE jobs SET
+                title = ?, company_name = ?, location = ?, posted_at = ?,
+                last_seen_at = ?, relevance_score = ?, tracks = ?
+            WHERE source_key = ? AND external_id = ?
+            """,
+            (
+                job.title,
+                job.company_name,
+                job.location,
+                job.posted_at,
+                now_iso,
+                score,
+                json.dumps(tracks),
+                job.source_key,
+                job.external_id,
+            ),
+        )
     return False, applied == 0
 
 
@@ -1999,6 +2288,51 @@ def mac_notify(title: str, subtitle: str, message: str) -> None:
         f'sound name "Glass"'
     )
     subprocess.run(["osascript", "-e", script], check=False, capture_output=True)
+
+
+DISCORD_WEBHOOK_URL: str = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+
+
+def discord_notify(
+    new_jobs: list[tuple["NormalizedJob", float, list[str]]],
+    webhook_url: str | None = None,
+) -> None:
+    url = (webhook_url or DISCORD_WEBHOOK_URL).strip()
+    if not url:
+        return
+    if len(new_jobs) == 0:
+        return
+
+    max_jobs_per_msg = 10
+    header = f"## New Semiconductor Roles Found — {len(new_jobs)} job{'s' if len(new_jobs) != 1 else ''}\n"
+    lines: list[str] = [header]
+
+    for job, score, matched in new_jobs[:max_jobs_per_msg]:
+        track_str = ", ".join(matched) if matched else "—"
+        loc = f"  📍 {job.location}" if job.location else ""
+        posted = ""
+        pa = str(job.posted_at or "").strip()
+        if pa:
+            posted = f"  🗓️ {pa}"
+        lines.append(
+            f"**[{job.company_name}]** [{job.title}]({job.url})\n"
+            f"> Score: {score:.1f} · Tracks: {track_str}{loc}{posted}\n"
+        )
+
+    if len(new_jobs) > max_jobs_per_msg:
+        lines.append(f"*… and {len(new_jobs) - max_jobs_per_msg} more. Check `jobs_tracker.xlsx` for the full list.*")
+
+    content = "\n".join(lines)
+    if len(content) > 1950:
+        content = content[:1950] + "\n…(truncated)"
+
+    payload = {"content": content}
+    try:
+        r = requests.post(url, json=payload, timeout=15)
+        if r.status_code not in (200, 204):
+            print(f"[warn] Discord webhook HTTP {r.status_code}: {r.text[:200]}", file=sys.stderr)
+    except requests.RequestException as e:
+        print(f"[warn] Discord webhook failed: {e}", file=sys.stderr)
 
 
 def _markdown_link_label_escape(text: str) -> str:
@@ -2254,7 +2588,11 @@ def export_jobs_excel(
             jid = _excel_job_id_display(external_id, url)
             dt = _excel_parse_first_seen(first_seen_at)
             loc_s = str(location or "").strip()
-            posted_s = str(posted_board or "").strip()
+            as_of = _local_datetime_from_first_seen_iso(first_seen_at)
+            posted_s = _board_posted_to_iso_date(
+                str(posted_board).strip() if posted_board else None,
+                as_of,
+            ) or str(posted_board or "").strip()
             applied_bool = bool(applied)
             ws.append(
                 [
@@ -2305,6 +2643,174 @@ def export_jobs_excel(
 
     wb.save(out)
     return out
+
+
+def export_indeed_general_excel(
+    rows: list[tuple[NormalizedJob, str, float, list[str]]],
+    intern_re: re.Pattern[str],
+    out_path: Path | None = None,
+    *,
+    exported_at_local: str,
+) -> Path:
+    """
+    Second workbook: broad Indeed-only roles that are not already in jobs.db (by URL).
+    Two sheets: co-op/intern vs full time; columns include the search query and relevance score.
+    """
+    from openpyxl import Workbook
+    from openpyxl.cell.cell import Cell
+    from openpyxl.styles import Alignment, Font
+    from openpyxl.worksheet.worksheet import Worksheet
+
+    out = Path(out_path or EXCEL_INDEED_GENERAL_PATH)
+    headers = [
+        "Job ID",
+        "Indeed search",
+        "Company name",
+        "Job name",
+        "Locations",
+        "Posted (Indeed)",
+        "Export run",
+        "Score",
+        "Tracks",
+        "URL",
+    ]
+    link_font = Font(color="0563C1", underline="single")
+
+    def row_tuple(
+        job: NormalizedJob, q: str, score: float, tracks: list[str]
+    ) -> tuple[str, str, str, str, str, str, str, float, str, str]:
+        jid = _excel_job_id_display(job.external_id, job.url)
+        loc_s = str(job.location or "").strip()
+        pa = _board_posted_to_iso_date(job.posted_at, datetime.now()) or str(
+            job.posted_at or ""
+        ).strip()
+        return (
+            jid,
+            q,
+            job.company_name,
+            job.title,
+            loc_s,
+            pa,
+            exported_at_local,
+            round(score, 2),
+            ", ".join(tracks),
+            job.url,
+        )
+
+    typed_rows: list[tuple[str, str, str, str, str, str, str, float, str, str]] = [
+        row_tuple(j, q, sc, tr) for j, q, sc, tr in rows
+    ]
+
+    def is_intern_row(r: tuple[str, str, str, str, str, str, str, float, str, str]) -> bool:
+        return bool(intern_re.search(r[3] or ""))
+
+    intern_data = [r for r in typed_rows if is_intern_row(r)]
+    full_data = [r for r in typed_rows if not is_intern_row(r)]
+
+    def sort_key(
+        r: tuple[str, str, str, str, str, str, str, float, str, str],
+    ) -> tuple[float, str, str]:
+        _a, _b, _c, title, _d, posted_s, _e, _f, _g, _url = r
+        return (
+            _posted_recency_sort_key(posted_s if posted_s else None),
+            title.lower(),
+            r[2].lower(),
+        )
+
+    intern_data.sort(key=sort_key)
+    full_data.sort(key=sort_key)
+
+    wb = Workbook()
+    ws_intern = wb.active
+    if ws_intern is None:
+        raise RuntimeError("openpyxl workbook has no active worksheet")
+    ws_intern.title = "Co-op & Intern"
+    ws_full = wb.create_sheet("Full time")
+
+    def write_sheet(
+        ws: Worksheet,
+        data: list[tuple[str, str, str, str, str, str, str, float, str, str]],
+    ) -> None:
+        ws.append(list(headers))
+        for row in data:
+            ws.append(list(row))
+        ws.freeze_panes = "A2"
+        if ws.max_row >= 1:
+            ws.auto_filter.ref = ws.dimensions
+        for col_letter, width in (
+            ("A", 14),
+            ("B", 28),
+            ("C", 22),
+            ("D", 46),
+            ("E", 26),
+            ("F", 14),
+            ("G", 18),
+            ("H", 8),
+            ("I", 28),
+            ("J", 54),
+        ):
+            ws.column_dimensions[col_letter].width = width
+        top_align = Alignment(wrap_text=True, vertical="top")
+        for row in ws.iter_rows(min_row=2, min_col=1, max_col=9):
+            for cell in row:
+                cell.alignment = top_align
+        for row in ws.iter_rows(min_row=2, min_col=10, max_col=10):
+            for cell in row:
+                if not isinstance(cell, Cell):
+                    continue
+                u = cell.value
+                if isinstance(u, str) and u.startswith(("http://", "https://")):
+                    cell.hyperlink = u
+                    cell.font = link_font
+                    cell.alignment = top_align
+
+    write_sheet(ws_intern, intern_data)
+    write_sheet(ws_full, full_data)
+    wb.save(out)
+    return out
+
+
+def run_indeed_general_scan_and_export(
+    conn: sqlite3.Connection,
+    kw_cfg: dict[str, Any],
+    tracks: dict[str, list[re.Pattern[str]]],
+    token_groups: dict[str, list[tuple[re.Pattern[str], ...]]],
+    min_score_default: float,
+    skip_perf_companies: frozenset[str],
+    us_only: bool,
+    us_inds: tuple[str, ...],
+    exclude_title: list[re.Pattern[str]],
+    intern_re: re.Pattern[str],
+) -> Path | None:
+    enabled, min_ovr, rw, queries = _parse_indeed_general_block(kw_cfg)
+    if not enabled or not queries:
+        return None
+    floor = float(min_ovr) if min_ovr is not None else float(min_score_default)
+    pairs = fetch_indeed_general_roles(queries, results_wanted=rw)
+    tracked = _db_canonical_url_set(conn)
+    scored: list[tuple[NormalizedJob, str, float, list[str]]] = []
+    for job, q in pairs:
+        if _canonical_job_url(job.url) in tracked:
+            continue
+        blob = f"{job.title}\n{job.body}"
+        score, matched = score_job(
+            blob,
+            tracks,
+            token_groups=token_groups,
+            company_name=job.company_name,
+            skip_performance_companies=skip_perf_companies,
+        )
+        if score < floor:
+            continue
+        if job_title_excluded(job.title, exclude_title):
+            continue
+        if us_only and not job_is_united_states(job, us_inds):
+            continue
+        scored.append((job, q, score, matched))
+    exported_local = datetime.now().strftime("%Y-%m-%d %H:%M")
+    return export_indeed_general_excel(
+        scored, intern_re, EXCEL_INDEED_GENERAL_PATH, exported_at_local=exported_local
+    )
 
 
 def cmd_scan(args: argparse.Namespace) -> int:
@@ -2369,6 +2875,27 @@ def cmd_scan(args: argparse.Namespace) -> int:
     except Exception as e:
         print(f"[warn] could not write {EXCEL_TRACKER_PATH.name}: {e}", file=sys.stderr)
 
+    try:
+        ig_path = run_indeed_general_scan_and_export(
+            conn,
+            kw_cfg,
+            tracks,
+            token_groups,
+            min_score,
+            skip_perf_companies,
+            us_only,
+            us_inds,
+            exclude_title,
+            intern_re,
+        )
+        if ig_path is not None:
+            print(f"Wrote {ig_path.name}")
+    except Exception as e:
+        print(
+            f"[warn] could not write {EXCEL_INDEED_GENERAL_PATH.name}: {e}",
+            file=sys.stderr,
+        )
+
     def _scan_sort_key(
         item: tuple[NormalizedJob, float, list[str], bool],
     ) -> tuple[float, int, int, str, str]:
@@ -2413,15 +2940,20 @@ def cmd_scan(args: argparse.Namespace) -> int:
     report = "\n".join(lines)
     print(report)
 
-    if getattr(args, "notify", False) and new_jobs:
-        titles_preview = " · ".join(
-            f"{j.company_name} — {j.title}" for j, _, _ in new_jobs[:2]
-        )[:100]
-        mac_notify(
-            "🔔 New Semiconductor Roles",
-            f"{len(new_jobs)} new role{'s' if len(new_jobs) > 1 else ''} found",
-            titles_preview,
-        )
+    if new_jobs:
+        webhook = getattr(args, "discord_webhook", None) or DISCORD_WEBHOOK_URL
+        if webhook:
+            discord_notify(new_jobs, webhook_url=webhook)
+
+        if getattr(args, "notify", False):
+            titles_preview = " · ".join(
+                f"{j.company_name} — {j.title}" for j, _, _ in new_jobs[:2]
+            )[:100]
+            mac_notify(
+                "🔔 New Semiconductor Roles",
+                f"{len(new_jobs)} new role{'s' if len(new_jobs) > 1 else ''} found",
+                titles_preview,
+            )
 
     conn.close()
     return 0
@@ -2495,6 +3027,43 @@ def cmd_export_excel(_args: argparse.Namespace) -> int:
         conn.close()
         return 1
     conn.close()
+    print(f"Wrote {path}")
+    return 0
+
+
+def cmd_export_indeed_general(_args: argparse.Namespace) -> int:
+    """Refresh indeed_general_roles.xlsx from Indeed only (no company boards)."""
+    kw_cfg = load_yaml(KEYWORDS_PATH)
+    tracks, token_groups, min_score = compile_keyword_config(kw_cfg)
+    skip_perf = skip_performance_track_company_set(kw_cfg)
+    us_only, us_inds, intern_re, _ = build_scan_preferences(kw_cfg)
+    exclude_title = compile_exclude_title_patterns(kw_cfg)
+    conn = sqlite3.connect(DB_PATH)
+    init_db(conn)
+    try:
+        path = run_indeed_general_scan_and_export(
+            conn,
+            kw_cfg,
+            tracks,
+            token_groups,
+            min_score,
+            skip_perf,
+            us_only,
+            us_inds,
+            exclude_title,
+            intern_re,
+        )
+    except Exception as e:
+        print(f"Indeed general Excel export failed: {e}", file=sys.stderr)
+        conn.close()
+        return 1
+    conn.close()
+    if path is None:
+        print(
+            "Indeed general export skipped (set indeed_general_scan.enabled / queries in keywords.yaml).",
+            file=sys.stderr,
+        )
+        return 2
     print(f"Wrote {path}")
     return 0
 
@@ -2576,6 +3145,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     ps = sub.add_parser("scan", help="Fetch boards, match keywords, show new / unapplied.")
     ps.add_argument("--notify", action="store_true", help="macOS notification when new jobs appear.")
+    ps.add_argument("--discord-webhook", dest="discord_webhook", default=None,
+                    help="Discord webhook URL for notifications (or set DISCORD_WEBHOOK_URL env var).")
     ps.set_defaults(func=cmd_scan)
 
     pd = sub.add_parser("daemon", help="Run scan on repeat. Ctrl+C to stop.")
@@ -2589,6 +3160,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--notify",
         action="store_true",
         help="macOS desktop popup when new jobs appear.",
+    )
+    pd.add_argument(
+        "--discord-webhook", dest="discord_webhook", default=None,
+        help="Discord webhook URL for notifications (or set DISCORD_WEBHOOK_URL env var).",
     )
     pd.set_defaults(func=cmd_daemon)
 
@@ -2606,6 +3181,12 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Write {EXCEL_TRACKER_PATH.name} (co-op/intern vs full time sheets, sorted like scan).",
     )
     pe.set_defaults(func=cmd_export_excel)
+
+    pig = sub.add_parser(
+        "export-indeed-general",
+        help=f"Run broad Indeed (JobSpy) queries and write {EXCEL_INDEED_GENERAL_PATH.name} (excludes URLs already in jobs.db).",
+    )
+    pig.set_defaults(func=cmd_export_indeed_general)
 
     return p
 

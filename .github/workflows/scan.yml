@@ -1,0 +1,69 @@
+name: Scheduled Job Scan
+
+on:
+  schedule:
+    # Runs every 6 hours: midnight, 6 AM, noon, 6 PM UTC
+    - cron: "0 0,6,12,18 * * *"
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore jobs database from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: jobs.db
+          key: jobs-db-${{ github.run_id }}
+          restore-keys: |
+            jobs-db-
+
+      - name: Run scan
+        run: python bot.py scan
+
+      - name: Save jobs database to cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: jobs.db
+          key: jobs-db-${{ github.run_id }}
+
+      - name: Upload tracker spreadsheet
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jobs-tracker-${{ github.run_id }}
+          path: |
+            jobs_tracker.xlsx
+            indeed_general_roles.xlsx
+          retention-days: 30
+
+      - name: Upload daily log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: daily-log-${{ github.run_id }}
+          path: daily_logs/*.md
+          retention-days: 30
+          if-no-files-found: ignore
