@@ -425,3 +425,10 @@ companies:
   - Cadence design engineer
   - Cadence verification engineer
   - Cadence hardware engineer new grad
+- name: Nuvacore
+  ats: jobspy
+  jobspy_queries:
+  - Nuvacore CPU engineer
+  - Nuvacore RTL engineer
+  - Nuvacore performance modeling
+  - Nuvacore design verification
