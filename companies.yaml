@@ -121,40 +121,23 @@ companies:
       - "Arm hardware engineer new grad"
       - "Arm design verification engineer"
       - "Arm SoC design engineer"
-  # Qualcomm careers (careers.qualcomm.com) are Eightfold PCS; the public search API often 404s/empties for bots.
-  # JobSpy pulls a subset of the same reqs reposted on Indeed — not 1:1 with the official site.
+  # Qualcomm uses Eightfold PCS which blocks bots; Indeed is our primary source.
+  # Fewer, broader queries maximize coverage with fewer API calls.
   - name: Qualcomm
     ats: jobspy
     jobspy_queries:
-      - "Qualcomm hardware design intern"
-      - "Qualcomm RTL design intern"
-      - "Qualcomm modem hardware intern"
-      - "Qualcomm verification intern"
-      - "Qualcomm CPU architecture intern"
-      - "Qualcomm performance modeling intern"
-      - "Qualcomm RTL design new grad"
-      - "Qualcomm hardware engineer new grad"
-      - "Qualcomm modem hardware engineer entry level"
-      - "Qualcomm CPU design engineer entry level"
-      - "Qualcomm verification engineer new grad"
-      - "Qualcomm ASIC design engineer"
-      - "Qualcomm digital design engineer"
-      - "Qualcomm GPU hardware engineer"
-      - "Qualcomm SoC design engineer"
-      - "Qualcomm physical design engineer"
-      - "Qualcomm hardware internship"
-      - "Qualcomm CPU RTL engineer"
-      - "Qualcomm SoC validation engineer"
-      - "Qualcomm emulation engineer"
-      - "Qualcomm signal integrity"
-      - "Qualcomm NoC engineer"
-      - "Qualcomm memory subsystem engineer"
-      - "Qualcomm RISC-V engineer"
-      - "Qualcomm design verification engineer"
-      - "Qualcomm UVM engineer"
+      - "Qualcomm hardware engineer"
+      - "Qualcomm design engineer"
+      - "Qualcomm verification engineer"
+      - "Qualcomm ASIC engineer"
+      - "Qualcomm intern hardware"
+      - "Qualcomm intern design"
+      - "Qualcomm new grad engineer"
+      - "Qualcomm modem engineer"
+      - "Qualcomm CPU engineer"
+      - "Qualcomm GPU engineer"
+      - "Qualcomm SoC engineer"
       - "Qualcomm FPGA engineer"
-      - "Qualcomm hardware engineer entry level"
-      - "Qualcomm silicon validation"
   - name: Broadcom
     ats: workday
     # Broadcom uses wd1 + External_Career (wd5/External returns HTTP 422).

@@ -2,12 +2,15 @@ name: Scheduled Job Scan
 
 on:
   schedule:
+    # Weekdays: 3 strategic windows
     # 11:30 AM EDT — West Coast morning sweep (8:30 AM PST, recruiters come online)
-    - cron: "30 15 * * *"
+    - cron: "30 15 * * 1-5"
     # 3:00 PM EDT — Afternoon wrap-up (final batch of US postings)
-    - cron: "0 19 * * *"
+    - cron: "0 19 * * 1-5"
     # 12:00 AM EDT — Midnight ATS syncs (automated batch updates)
-    - cron: "0 4 * * *"
+    - cron: "0 4 * * 1-5"
+    # Weekends: single 6:00 PM EDT sweep
+    - cron: "0 22 * * 0,6"
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
 permissions:
