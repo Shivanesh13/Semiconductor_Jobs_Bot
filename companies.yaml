@@ -1,503 +1,427 @@
 companies:
-  # --- The Workday Giants ---
-  # Optional: enabled: false skips a row (broken ATS slug or company moved portals).
-  - name: NVIDIA
-    ats: workday
-    tenant_url: "https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs"
-    portal_base: "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"
-    workday_enrich_job_details: true
-    workday_enrich_max: 650
-  # Supplementary Indeed search — catches NVIDIA intern/new-grad reqs that may appear on Indeed with different phrasing.
-  - name: NVIDIA
-    ats: jobspy
-    jobspy_queries:
-      - "NVIDIA hardware intern"
-      - "NVIDIA ASIC design intern"
-      - "NVIDIA verification intern"
-      - "NVIDIA GPU hardware intern"
-      - "NVIDIA RTL design new grad"
-      - "NVIDIA hardware engineer new grad"
-      - "NVIDIA ASIC verification engineer"
-  - name: Cisco
-    ats: workday
-    tenant_url: "https://cisco.wd5.myworkdayjobs.com/wday/cxs/cisco/Cisco_Careers/jobs"
-    portal_base: "https://cisco.wd5.myworkdayjobs.com/Cisco_Careers"
-  # Ericsson’s site (jobs.ericsson.com) is Eightfold PCS — public JSON often blocks non-browser clients.
-  # JobSpy/Indeed is a partial mirror for hardware/ASIC roles.
-  - name: Ericsson
-    ats: jobspy
-    jobspy_queries:
-      - "Ericsson ASIC design engineer"
-      - "Ericsson hardware engineer"
-      - "Ericsson RTL design engineer"
-      - "Ericsson design verification engineer"
-      - "Ericsson silicon"
-      - "Ericsson FPGA"
-  # Microsoft careers are not on a single Workday slug the bot can call reliably; Indeed mirror.
-  - name: Microsoft
-    ats: jobspy
-    jobspy_queries:
-      - "Microsoft silicon engineer"
-      - "Microsoft hardware engineer"
-      - "Microsoft RTL design"
-      - "Microsoft ASIC verification"
-      - "Microsoft Azure hardware"
-  # https://careers.smartrecruiters.com/Solidigm — public Posting API.
-  - name: Solidigm
-    ats: smartrecruiters
-    smartrecruiters_company: Solidigm
-  # Nokia uses Taleo/oracle for apply; JobSpy catches silicon-adjacent postings on Indeed.
-  - name: Nokia
-    ats: jobspy
-    jobspy_queries:
-      - "Nokia ASIC engineer"
-      - "Nokia hardware design engineer"
-      - "Nokia RTL engineer"
-      - "Nokia verification engineer"
-      - "Nokia silicon"
-  # AMD’s official site is Jibe (careers.amd.com), not Workday. JobSpy searches Indeed as a partial mirror;
-  # some reqs never appear on Indeed or use different titles.
-  - name: AMD
-    ats: jobspy
-    jobspy_queries:
-      - "AMD hardware engineer"
-      - "AMD design engineer"
-      - "AMD verification engineer"
-      - "AMD ASIC engineer"
-      - "AMD intern hardware"
-      - "AMD new grad engineer"
-      - "AMD CPU design engineer"
-      - "AMD GPU design engineer"
-      - "AMD RTL engineer"
-      - "AMD FPGA engineer"
-  - name: Intel
-    ats: workday
-    tenant_url: "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs"
-    portal_base: "https://intel.wd1.myworkdayjobs.com/External"
-    workday_enrich_job_details: true
-    workday_enrich_max: 400
-  # Supplementary Indeed search for Intel intern/grad roles.
-  - name: Intel
-    ats: jobspy
-    jobspy_queries:
-      - "Intel hardware intern"
-      - "Intel RTL design intern"
-      - "Intel verification intern"
-      - "Intel FPGA intern"
-      - "Intel hardware engineer new grad"
-      - "Intel ASIC design engineer"
-      - "Intel design verification engineer"
-  # WordPress career page (India-heavy). With united_states_only: true, most rows drop unless the title/loc signals US.
-  - name: Mirafra
-    ats: mirafra
-    mirafra_careers_url: "https://mirafra.com/career/"
-  - name: Arm
-    ats: phenom
-    listing_url: "https://careers.arm.com/search-jobs?acm=ALL&alrpm=ALL"
-    phenom_max_pages: 40
-  # Supplementary Indeed search for Arm intern/grad roles.
-  - name: Arm
-    ats: jobspy
-    jobspy_queries:
-      - "Arm hardware intern"
-      - "Arm RTL design intern"
-      - "Arm verification intern"
-      - "Arm CPU design engineer"
-      - "Arm hardware engineer new grad"
-      - "Arm design verification engineer"
-      - "Arm SoC design engineer"
-  # Qualcomm uses Eightfold PCS which blocks bots; Indeed is our primary source.
-  # Fewer, broader queries maximize coverage with fewer API calls.
-  - name: Qualcomm
-    ats: jobspy
-    jobspy_queries:
-      - "Qualcomm hardware engineer"
-      - "Qualcomm design engineer"
-      - "Qualcomm verification engineer"
-      - "Qualcomm ASIC engineer"
-      - "Qualcomm intern hardware"
-      - "Qualcomm intern design"
-      - "Qualcomm new grad engineer"
-      - "Qualcomm modem engineer"
-      - "Qualcomm CPU engineer"
-      - "Qualcomm GPU engineer"
-      - "Qualcomm SoC engineer"
-      - "Qualcomm FPGA engineer"
-  - name: Broadcom
-    ats: workday
-    # Broadcom uses wd1 + External_Career (wd5/External returns HTTP 422).
-    tenant_url: "https://broadcom.wd1.myworkdayjobs.com/wday/cxs/broadcom/External_Career/jobs"
-    portal_base: "https://broadcom.wd1.myworkdayjobs.com/External_Career"
-    workday_enrich_job_details: true
-    workday_enrich_max: 300
-  - name: Marvell
-    ats: workday
-    tenant_url: "https://marvell.wd1.myworkdayjobs.com/wday/cxs/marvell/MarvellCareers/jobs"
-    portal_base: "https://marvell.wd1.myworkdayjobs.com/MarvellCareers"
-    workday_enrich_job_details: true
-    workday_enrich_max: 200
-  # Supplementary Indeed search for Marvell intern/grad roles.
-  - name: Marvell
-    ats: jobspy
-    jobspy_queries:
-      - "Marvell hardware intern"
-      - "Marvell RTL design intern"
-      - "Marvell verification intern"
-      - "Marvell ASIC design engineer"
-      - "Marvell hardware engineer new grad"
-  - name: Texas Instruments
-    ats: jobspy
-    jobspy_queries:
-      - "Texas Instruments hardware intern"
-      - "Texas Instruments RTL design intern"
-      - "Texas Instruments verification intern"
-      - "Texas Instruments hardware engineer new grad"
-      - "Texas Instruments RTL design new grad"
-      - "Texas Instruments digital design engineer entry level"
-  - name: NXP Semiconductors
-    ats: workday
-    tenant_url: "https://nxp.wd3.myworkdayjobs.com/wday/cxs/nxp/careers/jobs"
-    portal_base: "https://nxp.wd3.myworkdayjobs.com/careers"
-  - name: Synopsys
-    ats: phenom
-    # Workday CXS for synopsys/External returns HTTP 422; listings use Phenom-style /job/... URLs.
-    listing_url: "https://careers.synopsys.com/search-jobs"
-    phenom_max_pages: 50
-  - name: Cadence
-    ats: workday
-    tenant_url: "https://cadence.wd1.myworkdayjobs.com/wday/cxs/cadence/External_Careers/jobs"
-    portal_base: "https://cadence.wd1.myworkdayjobs.com/External_Careers"
-    workday_enrich_job_details: true
-    workday_enrich_max: 200
-  - name: Micron
-    ats: workday
-    tenant_url: "https://micron.wd1.myworkdayjobs.com/wday/cxs/micron/External/jobs"
-    portal_base: "https://micron.wd1.myworkdayjobs.com/External"
-  - name: Lattice Semiconductor
-    ats: jobspy
-    jobspy_queries:
-      - "Lattice Semiconductor FPGA intern"
-      - "Lattice Semiconductor hardware design intern"
-      - "Lattice Semiconductor RTL intern"
-      - "Lattice Semiconductor hardware engineer new grad"
-      - "Lattice Semiconductor FPGA design engineer entry level"
-  - name: Analog Devices
-    ats: workday
-    tenant_url: "https://analogdevices.wd1.myworkdayjobs.com/wday/cxs/analogdevices/External/jobs"
-    portal_base: "https://analogdevices.wd1.myworkdayjobs.com/External"
-  - name: Infineon
-    ats: jobspy
-    jobspy_queries:
-      - "Infineon hardware design intern"
-      - "Infineon semiconductor intern"
-      - "Infineon RTL design intern"
-      - "Infineon hardware engineer new grad"
-      - "Infineon chip design engineer entry level"
-  - name: MediaTek
-    ats: jobspy
-    jobspy_queries:
-      - "MediaTek hardware intern"
-      - "MediaTek RTL design intern"
-      - "MediaTek modem hardware intern"
-      - "MediaTek CPU design intern"
-      - "MediaTek hardware engineer new grad"
-      - "MediaTek RTL design new grad"
-      - "MediaTek CPU design engineer entry level"
-  - name: Cirrus Logic
-    ats: jobspy
-    jobspy_queries:
-      - "Cirrus Logic hardware design intern"
-      - "Cirrus Logic RTL intern"
-      - "Cirrus Logic verification intern"
-      - "Cirrus Logic hardware engineer new grad"
-      - "Cirrus Logic RTL design new grad"
-      - "Cirrus Logic digital design engineer entry level"
-  - name: Renesas
-    ats: phenom
-    # HTML scrape of /Jobs?page=N (links use /job/...). Alt: ats: smartrecruiters, smartrecruiters_company: RenesasElectronics
-    listing_url: "https://jobs.renesas.com/Jobs?page=1"
-    phenom_page_query: page
-    phenom_max_pages: 30
-
-  # Imagination Technologies (PowerVR GPU/AI IP). Custom careers portal, not Workday/Greenhouse.
-  - name: Imagination Technologies
-    ats: jobspy
-    jobspy_queries:
-      - "Imagination Technologies hardware engineer"
-      - "Imagination Technologies RTL design"
-      - "Imagination Technologies GPU design"
-      - "Imagination Technologies verification engineer"
-      - "Imagination Technologies FPGA"
-      - "Imagination Technologies hardware intern"
-      - "Imagination Technologies design engineer"
-      - "Imagination Technologies silicon"
-  # SpaceX — custom careers portal (spacex.com/careers). Workday CXS returns 401.
-  - name: SpaceX
-    ats: jobspy
-    jobspy_queries:
-      - "SpaceX hardware engineer"
-      - "SpaceX ASIC design"
-      - "SpaceX FPGA engineer"
-      - "SpaceX RTL design"
-      - "SpaceX verification engineer"
-      - "SpaceX silicon engineer"
-      - "SpaceX hardware intern"
-      - "SpaceX avionics hardware"
-      - "SpaceX digital design engineer"
-      - "SpaceX Starlink hardware"
-
-  # --- Phenom listings (HTML search pages with /job/ links) ---
-  - name: Ampere Computing
-    ats: jobvite
-    jobvite_slug: "amperecomputing"
-  # Apple jobs.apple.com uses custom HTML (/details/ URLs, not /job/), so Phenom scraper won't work.
-  # JobSpy/Indeed as a reliable mirror for silicon/HW roles.
-  - name: Apple
-    ats: jobspy
-    jobspy_queries:
-      - "Apple RTL design engineer"
-      - "Apple RTL design intern"
-      - "Apple ASIC design engineer"
-      - "Apple digital design engineer"
-      - "Apple hardware engineer silicon"
-      - "Apple hardware intern"
-      - "Apple hardware engineering intern"
-      - "Apple design verification engineer"
-      - "Apple verification intern"
-      - "Apple SoC design engineer"
-      - "Apple GPU hardware engineer"
-      - "Apple CPU design engineer"
-      - "Apple FPGA engineer"
-      - "Apple silicon validation engineer"
-      - "Apple hardware new grad"
-      - "Apple microarchitecture engineer"
-      - "Apple performance modeling"
-      - "Apple silicon design intern"
-
-  # --- Greenhouse & Lever (Established Startups) ---
-  - name: Tenstorrent
-    ats: greenhouse
-    board: "tenstorrent"
-  # University / intern roles (https://tenstorrent.com/en/university) — separate Greenhouse board.
-  - name: Tenstorrent University
-    ats: greenhouse
-    board: "tenstorrentuniversity"
-  - name: Ventana Micro
-    ats: jobvite
-    jobvite_slug: "ventanamicro"
-  - name: Esperanto Technologies
-    ats: jobvite
-    jobvite_slug: "esperantocareers"
-  - name: Cerebras Systems
-    ats: greenhouse
-    board: "cerebrassystems"
-  # https://www.etched.com/careers — Greenhouse board etchedai
-  - name: Etched
-    ats: greenhouse
-    board: "etchedai"
-  - name: SiFive
-    ats: workday
-    tenant_url: "https://sifive.wd1.myworkdayjobs.com/wday/cxs/sifive/sifivecareers/jobs"
-    portal_base: "https://sifive.wd1.myworkdayjobs.com/sifivecareers"
-
-  # --- Ashby (AI & RISC-V Challengers) ---
-  - name: Groq
-    ats: ashby
-    org: "groq"
-  - name: Rivos
-    ats: ashby
-    org: "rivos"
-  - name: Untether AI
-    ats: ashby
-    org: "untether-ai"
-  - name: d-Matrix
-    ats: ashby
-    org: "d-matrix"
-  - name: Etched
-    ats: ashby
-    org: "etched"
-  - name: MatX
-    ats: ashby
-    org: "matx"
-
-  # --- Musk-affiliated (Tesla, xAI, X, Boring Co.) ---
-  - name: Tesla
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.tesla.com/careers/search (custom portal; /careers/search/job/... — not supported by bot yet)
-  - name: xAI
-    ats: greenhouse
-    board: "xai"
-  - name: X
-    ats: workday
-    enabled: false
-    # X/Twitter Workday CXS returns 422. Not relevant to semiconductor job search anyway.
-    tenant_url: "https://twitter.wd5.myworkdayjobs.com/wday/cxs/twitter/X/jobs"
-    portal_base: "https://twitter.wd5.myworkdayjobs.com/X"
-  - name: The Boring Company
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.boringcompany.com/careers (often Gem / custom — not supported by bot yet)
-
-  # --- AWS / Amazon silicon (amazon.jobs not integrated — Indeed via JobSpy) ---
-  - name: AWS / Annapurna Labs
-    ats: jobspy
-    jobspy_queries:
-      - "Amazon Annapurna Labs hardware engineer"
-      - "Annapurna Labs RTL design"
-      - "Annapurna Labs verification engineer"
-      - "AWS chip design engineer"
-      - "Amazon silicon design engineer"
-      - "AWS Graviton hardware"
-
-  # --- Deep Tech Startups (ASIC, FPGA, RISC-V, AI, Quantum, Networking) ---
-  # Groq, Etched, and MatX are already listed under "Ashby (AI & RISC-V Challengers)" above.
-
-  # AI / hardware accelerators
-  - name: AIStorm
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://aistorm.ai/careers/
-  - name: Alif Semiconductor
-    ats: lever
-    site: "alifsemi"
-  - name: Aspinity
-    ats: greenhouse
-    board: "aspinity"
-  - name: Axelera AI
-    ats: ashby
-    org: "axelera"
-  - name: DeepX
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — Greeting HR https://deepx.career.greetinghr.com/ (not supported by bot yet)
-  - name: DeGirum
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://degirum.com/ (no public ATS found)
-  - name: EdgeCortix
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.edgecortix.com/en/careers/
-  - name: EnCharge AI
-    ats: greenhouse
-    # If API 404s, try board "enchargeai36" (Greenhouse migration).
-    board: "enchargeai"
-  - name: Exa Laboratories
-    ats: lever
-    site: "exa-labs"
-  - name: Extropic
-    ats: lever
-    site: "extropic"
-  - name: Fractile
-    ats: greenhouse
-    board: "fractile"
-  - name: Furiosa AI
-    ats: ashby
-    org: "furiosa-ai"
-  - name: Gemesys
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — Personio https://gemesys.jobs.personio.de/ (not supported by bot yet)
-  - name: Hailo
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://hailo.ai/company-overview/careers/
-  - name: HawAI.tech
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://hawaitech.com/
-  - name: HyperAccel
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://hyperaccel.career.greetinghr.com/ (not supported by bot yet)
-  - name: Innatera
-    ats: ashby
-    org: "innatera"
-  - name: Kneron
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.kneron.com/careers/
-  - name: Lemurian Labs
-    ats: greenhouse
-    board: "lemurianlabs"
-  - name: Memryx
-    ats: unknown
-    enabled: false
-    # Greenhouse board gone — company may have shut down or been acquired
-
-  # RISC-V IP & processors
-  - name: Ahead Computing
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.aheadcomputing.com/careers/
-  - name: Akeana
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.akeana.com/career/
-  - name: Bluespec
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.bluespec.com/careers/
-  - name: Codasip
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — Workable https://apply.workable.com/codasip/ (not supported by bot yet)
-  - name: Condor Computing
-    ats: greenhouse
-    board: "condorcomputing"
-    enabled: false
-    # Greenhouse board returning 404 as of 2026-04
-  - name: InCore Semi
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — Zoho Recruit https://incoresemi.zohorecruit.com/jobs/Careers (not supported by bot yet)
-  - name: Keysom
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.keysom.io/
-
-  # FPGA & ASIC
-  - name: Azimuth AI
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://azimuth-ai.com/career/
-  - name: BOS Semiconductors
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.bos-semi.com/careers
-  - name: Chipflow
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.chipflow.io/careers
-  - name: Efinix
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.efinixinc.com/company-careers.html
-  - name: Gowin Semiconductor
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.gowinsemi.com/en/careers/
-
-  # Networking / interconnects
-  - name: Ethernovia
-    ats: greenhouse
-    board: "ethernovia"
-  - name: eTopus
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://etopus.com/careers/
-  - name: Kandou
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — https://www.kandou.ai/careers/
-
-  # Quantum computing hardware
-  - name: Atlantic Quantum
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — Polymer https://jobs.polymer.co/atlantic-quantum (not supported by bot yet)
-  - name: Mesa Quantum
-    ats: unknown
-    enabled: false
-    # TODO: Find careers page — Workable https://apply.workable.com/mesa-quantum-systems/ (not supported by bot yet)
+- name: NVIDIA
+  ats: workday
+  tenant_url: https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs
+  portal_base: https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
+  workday_enrich_job_details: true
+  workday_enrich_max: 650
+- name: NVIDIA
+  ats: jobspy
+  jobspy_queries:
+  - NVIDIA hardware intern
+  - NVIDIA ASIC design intern
+  - NVIDIA verification intern
+  - NVIDIA GPU hardware intern
+  - NVIDIA RTL design new grad
+  - NVIDIA hardware engineer new grad
+  - NVIDIA ASIC verification engineer
+- name: Cisco
+  ats: workday
+  tenant_url: https://cisco.wd5.myworkdayjobs.com/wday/cxs/cisco/Cisco_Careers/jobs
+  portal_base: https://cisco.wd5.myworkdayjobs.com/Cisco_Careers
+- name: Ericsson
+  ats: jobspy
+  jobspy_queries: []
+  enabled: false
+- name: Microsoft
+  ats: jobspy
+  jobspy_queries:
+  - Microsoft silicon engineer
+  - Microsoft hardware engineer
+  - Microsoft RTL design
+  - Microsoft ASIC verification
+  - Microsoft Azure hardware
+- name: Solidigm
+  ats: smartrecruiters
+  smartrecruiters_company: Solidigm
+- name: Nokia
+  ats: jobspy
+  jobspy_queries:
+  - Nokia ASIC engineer
+  - Nokia hardware design engineer
+  - Nokia RTL engineer
+  - Nokia verification engineer
+  - Nokia silicon
+- name: AMD
+  ats: jobspy
+  jobspy_queries:
+  - AMD hardware engineer
+  - AMD design engineer
+  - AMD verification engineer
+  - AMD ASIC engineer
+  - AMD intern hardware
+  - AMD new grad engineer
+  - AMD CPU design engineer
+  - AMD GPU design engineer
+  - AMD RTL engineer
+  - AMD FPGA engineer
+- name: Intel
+  ats: workday
+  tenant_url: https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs
+  portal_base: https://intel.wd1.myworkdayjobs.com/External
+  workday_enrich_job_details: true
+  workday_enrich_max: 400
+- name: Intel
+  ats: jobspy
+  jobspy_queries:
+  - Intel hardware intern
+  - Intel RTL design intern
+  - Intel verification intern
+  - Intel FPGA intern
+  - Intel hardware engineer new grad
+  - Intel ASIC design engineer
+  - Intel design verification engineer
+- name: Mirafra
+  ats: mirafra
+  mirafra_careers_url: https://mirafra.com/career/
+- name: Arm
+  ats: phenom
+  listing_url: https://careers.arm.com/search-jobs?acm=ALL&alrpm=ALL
+  phenom_max_pages: 40
+- name: Arm
+  ats: jobspy
+  jobspy_queries:
+  - Arm hardware intern
+  - Arm RTL design intern
+  - Arm verification intern
+  - Arm CPU design engineer
+  - Arm hardware engineer new grad
+  - Arm design verification engineer
+  - Arm SoC design engineer
+- name: Qualcomm
+  ats: jobspy
+  jobspy_queries:
+  - Qualcomm hardware engineer
+  - Qualcomm design engineer
+  - Qualcomm verification engineer
+  - Qualcomm ASIC engineer
+  - Qualcomm intern hardware
+  - Qualcomm intern design
+  - Qualcomm new grad engineer
+  - Qualcomm modem engineer
+  - Qualcomm CPU engineer
+  - Qualcomm GPU engineer
+  - Qualcomm SoC engineer
+  - Qualcomm FPGA engineer
+- name: Broadcom
+  ats: workday
+  tenant_url: https://broadcom.wd1.myworkdayjobs.com/wday/cxs/broadcom/External_Career/jobs
+  portal_base: https://broadcom.wd1.myworkdayjobs.com/External_Career
+  workday_enrich_job_details: true
+  workday_enrich_max: 300
+- name: Marvell
+  ats: workday
+  tenant_url: https://marvell.wd1.myworkdayjobs.com/wday/cxs/marvell/MarvellCareers/jobs
+  portal_base: https://marvell.wd1.myworkdayjobs.com/MarvellCareers
+  workday_enrich_job_details: true
+  workday_enrich_max: 200
+- name: Marvell
+  ats: jobspy
+  jobspy_queries:
+  - Marvell hardware intern
+  - Marvell RTL design intern
+  - Marvell verification intern
+  - Marvell ASIC design engineer
+  - Marvell hardware engineer new grad
+- name: Texas Instruments
+  ats: jobspy
+  jobspy_queries:
+  - Texas Instruments hardware intern
+  - Texas Instruments RTL design intern
+  - Texas Instruments verification intern
+  - Texas Instruments hardware engineer new grad
+  - Texas Instruments RTL design new grad
+  - Texas Instruments digital design engineer entry level
+- name: NXP Semiconductors
+  ats: workday
+  tenant_url: https://nxp.wd3.myworkdayjobs.com/wday/cxs/nxp/careers/jobs
+  portal_base: https://nxp.wd3.myworkdayjobs.com/careers
+- name: Synopsys
+  ats: phenom
+  listing_url: https://careers.synopsys.com/search-jobs
+  phenom_max_pages: 50
+- name: Cadence
+  ats: workday
+  tenant_url: https://cadence.wd1.myworkdayjobs.com/wday/cxs/cadence/External_Careers/jobs
+  portal_base: https://cadence.wd1.myworkdayjobs.com/External_Careers
+  workday_enrich_job_details: true
+  workday_enrich_max: 200
+- name: Micron
+  ats: workday
+  tenant_url: https://micron.wd1.myworkdayjobs.com/wday/cxs/micron/External/jobs
+  portal_base: https://micron.wd1.myworkdayjobs.com/External
+- name: Lattice Semiconductor
+  ats: jobspy
+  jobspy_queries: []
+  enabled: false
+- name: Analog Devices
+  ats: workday
+  tenant_url: https://analogdevices.wd1.myworkdayjobs.com/wday/cxs/analogdevices/External/jobs
+  portal_base: https://analogdevices.wd1.myworkdayjobs.com/External
+- name: Infineon
+  ats: jobspy
+  jobspy_queries: []
+  enabled: false
+- name: MediaTek
+  ats: jobspy
+  jobspy_queries: []
+  enabled: false
+- name: Cirrus Logic
+  ats: jobspy
+  jobspy_queries:
+  - Cirrus Logic engineer
+  - Cirrus Logic analog design engineer
+  - Cirrus Logic mixed signal engineer
+  - Cirrus Logic IC design engineer
+  - Cirrus Logic hardware engineer
+  - Cirrus Logic intern
+- name: Renesas
+  ats: phenom
+  listing_url: https://jobs.renesas.com/Jobs?page=1
+  phenom_page_query: page
+  phenom_max_pages: 30
+- name: Imagination Technologies
+  ats: jobspy
+  jobspy_queries:
+  - Imagination Technologies hardware engineer
+  - Imagination Technologies RTL design
+  - Imagination Technologies GPU design
+  - Imagination Technologies verification engineer
+  - Imagination Technologies FPGA
+  - Imagination Technologies hardware intern
+  - Imagination Technologies design engineer
+  - Imagination Technologies silicon
+- name: SpaceX
+  ats: jobspy
+  jobspy_queries:
+  - SpaceX hardware engineer
+  - SpaceX ASIC design
+  - SpaceX FPGA engineer
+  - SpaceX RTL design
+  - SpaceX verification engineer
+  - SpaceX silicon engineer
+  - SpaceX hardware intern
+  - SpaceX avionics hardware
+  - SpaceX digital design engineer
+  - SpaceX Starlink hardware
+- name: Ampere Computing
+  ats: jobvite
+  jobvite_slug: amperecomputing
+- name: Apple
+  ats: jobspy
+  jobspy_queries:
+  - Apple RTL design engineer
+  - Apple RTL design intern
+  - Apple ASIC design engineer
+  - Apple digital design engineer
+  - Apple hardware engineer silicon
+  - Apple hardware intern
+  - Apple hardware engineering intern
+  - Apple design verification engineer
+  - Apple verification intern
+  - Apple SoC design engineer
+  - Apple GPU hardware engineer
+  - Apple CPU design engineer
+  - Apple FPGA engineer
+  - Apple silicon validation engineer
+  - Apple hardware new grad
+  - Apple microarchitecture engineer
+  - Apple performance modeling
+  - Apple silicon design intern
+- name: Tenstorrent
+  ats: greenhouse
+  board: tenstorrent
+- name: Tenstorrent University
+  ats: greenhouse
+  board: tenstorrentuniversity
+- name: Ventana Micro
+  ats: jobvite
+  jobvite_slug: ventanamicro
+- name: Esperanto Technologies
+  ats: jobvite
+  jobvite_slug: esperantocareers
+- name: Cerebras Systems
+  ats: greenhouse
+  board: cerebrassystems
+- name: Etched
+  ats: greenhouse
+  board: etchedai
+- name: SiFive
+  ats: workday
+  tenant_url: https://sifive.wd1.myworkdayjobs.com/wday/cxs/sifive/sifivecareers/jobs
+  portal_base: https://sifive.wd1.myworkdayjobs.com/sifivecareers
+- name: Groq
+  ats: ashby
+  org: groq
+- name: Rivos
+  ats: ashby
+  org: rivos
+- name: Untether AI
+  ats: ashby
+  org: untether-ai
+- name: d-Matrix
+  ats: ashby
+  org: d-matrix
+- name: Etched
+  ats: ashby
+  org: etched
+- name: MatX
+  ats: ashby
+  org: matx
+- name: Tesla
+  ats: unknown
+  enabled: false
+- name: xAI
+  ats: greenhouse
+  board: xai
+- name: X
+  ats: workday
+  enabled: false
+  tenant_url: https://twitter.wd5.myworkdayjobs.com/wday/cxs/twitter/X/jobs
+  portal_base: https://twitter.wd5.myworkdayjobs.com/X
+- name: The Boring Company
+  ats: unknown
+  enabled: false
+- name: AWS / Annapurna Labs
+  ats: jobspy
+  jobspy_queries:
+  - Amazon Annapurna Labs hardware engineer
+  - Annapurna Labs RTL design
+  - Annapurna Labs verification engineer
+  - AWS chip design engineer
+  - Amazon silicon design engineer
+  - AWS Graviton hardware
+- name: AIStorm
+  ats: unknown
+  enabled: false
+- name: Alif Semiconductor
+  ats: lever
+  site: alifsemi
+- name: Aspinity
+  ats: greenhouse
+  board: aspinity
+- name: Axelera AI
+  ats: ashby
+  org: axelera
+- name: DeepX
+  ats: unknown
+  enabled: false
+- name: DeGirum
+  ats: unknown
+  enabled: false
+- name: EdgeCortix
+  ats: unknown
+  enabled: false
+- name: EnCharge AI
+  ats: greenhouse
+  board: enchargeai
+- name: Exa Laboratories
+  ats: lever
+  site: exa-labs
+- name: Extropic
+  ats: lever
+  site: extropic
+- name: Fractile
+  ats: greenhouse
+  board: fractile
+- name: Furiosa AI
+  ats: ashby
+  org: furiosa-ai
+- name: Gemesys
+  ats: unknown
+  enabled: false
+- name: Hailo
+  ats: unknown
+  enabled: false
+- name: HawAI.tech
+  ats: unknown
+  enabled: false
+- name: HyperAccel
+  ats: unknown
+  enabled: false
+- name: Innatera
+  ats: ashby
+  org: innatera
+- name: Kneron
+  ats: unknown
+  enabled: false
+- name: Lemurian Labs
+  ats: greenhouse
+  board: lemurianlabs
+- name: Memryx
+  ats: unknown
+  enabled: false
+- name: Ahead Computing
+  ats: unknown
+  enabled: false
+- name: Akeana
+  ats: unknown
+  enabled: false
+- name: Bluespec
+  ats: unknown
+  enabled: false
+- name: Codasip
+  ats: unknown
+  enabled: false
+- name: Condor Computing
+  ats: greenhouse
+  board: condorcomputing
+  enabled: false
+- name: InCore Semi
+  ats: unknown
+  enabled: false
+- name: Keysom
+  ats: unknown
+  enabled: false
+- name: Azimuth AI
+  ats: unknown
+  enabled: false
+- name: BOS Semiconductors
+  ats: unknown
+  enabled: false
+- name: Chipflow
+  ats: unknown
+  enabled: false
+- name: Efinix
+  ats: unknown
+  enabled: false
+- name: Gowin Semiconductor
+  ats: unknown
+  enabled: false
+- name: Ethernovia
+  ats: greenhouse
+  board: ethernovia
+- name: eTopus
+  ats: unknown
+  enabled: false
+- name: Kandou
+  ats: unknown
+  enabled: false
+- name: Atlantic Quantum
+  ats: unknown
+  enabled: false
+- name: Mesa Quantum
+  ats: unknown
+  enabled: false
+- name: Broadcom
+  ats: jobspy
+  jobspy_queries:
+  - Broadcom hardware intern
+  - Broadcom ASIC design engineer
+  - Broadcom verification engineer
+  - Broadcom hardware engineer new grad
+  - Broadcom RTL engineer
+- name: Micron
+  ats: jobspy
+  jobspy_queries:
+  - Micron hardware intern
+  - Micron ASIC design engineer
+  - Micron verification engineer
+  - Micron hardware engineer new grad
+- name: Cadence
+  ats: jobspy
+  jobspy_queries:
+  - Cadence hardware intern
+  - Cadence design engineer
+  - Cadence verification engineer
+  - Cadence hardware engineer new grad
