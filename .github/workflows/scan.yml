@@ -2,8 +2,12 @@ name: Scheduled Job Scan
 
 on:
   schedule:
-    # Runs every 6 hours: midnight, 6 AM, noon, 6 PM UTC
-    - cron: "0 0,6,12,18 * * *"
+    # 11:30 AM EDT — West Coast morning sweep (8:30 AM PST, recruiters come online)
+    - cron: "30 15 * * *"
+    # 3:00 PM EDT — Afternoon wrap-up (final batch of US postings)
+    - cron: "0 19 * * *"
+    # 12:00 AM EDT — Midnight ATS syncs (automated batch updates)
+    - cron: "0 4 * * *"
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
 permissions:
